@@ -39,8 +39,8 @@ jobs:
           # Optional: show what patterns are configured
           git secrets --list || true
 
-          # Scan the repository; matches go to stdout
-          git secrets --scan > git-secrets-output.txt || true
+          # Scan the repository; matches go to stdout/stderr
+          git secrets --scan > git-secrets-output.txt 2>&1 || true
 
           echo "Scan complete, saved to git-secrets-output.txt"
           echo "===== git-secrets-output.txt ====="
