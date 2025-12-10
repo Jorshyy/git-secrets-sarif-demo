@@ -13,6 +13,9 @@ API_TOKEN = "fake-api-token-xyz-123"
 # INTENTIONAL FAKE SECRET FOR CLASS PROJECT
 PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----FAKEFAKEFAKE-----END PRIVATE KEY-----"
 
+# idk
+YUH = "YUHHH"
+
 
 def main():
     print("This is a demo app with FAKE secrets for git-secrets + SARIF project.")
