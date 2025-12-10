@@ -48,7 +48,7 @@ jobs:
 
 
       - name: Convert git-secrets output to SARIF
-        uses: Jorshyy/git-secrets-sarif-action@main
+        uses: Jorshyy/git-secrets-sarif-action@v1
         with:
           input-file: git-secrets-output.txt
           output-file: git-secrets-output.sarif
