@@ -1,0 +1,197 @@
+# git-secrets SARIF Demo
+
+This repository is a small demo project showing how to take the output from
+[`git-secrets`](https://github.com/awslabs/git-secrets), convert it to
+[SARIF 2.1.0](https://github.com/oasis-tcs/sarif-spec), and surface the results
+as GitHub Advanced Security **Code scanning** alerts.
+
+It uses our custom action:
+
+- **Action repo:** https://github.com/Jorshyy/git-secrets-sarif-action  
+
+The action takes the text output from `git secrets --scan`, builds a valid SARIF
+file, and the workflow uploads that SARIF so GitHub can show findings on pull
+requests and in the **Security → Code scanning alerts** view.
+
+> **Important:** All secrets in this repository are **fake** and exist purely
+> to demonstrate secret scanning. None of them are real credentials.
+
+---
+
+## Repository structure
+
+```text
+.
+├── .github/
+│   └── workflows/
+│       └── git-secrets-sarif-scan.yml   # Workflow that runs git-secrets + SARIF conversion
+├── vulnerable-app/
+│   ├── app.py                           # Demo app containing intentionally hard-coded fake secrets
+│   └── README.md                        # Explains the fake secrets and why they are insecure
+└── screenshots/
+    ├── workflow-run.png                 # Example successful workflow run
+    ├── code-scanning-alerts.png         # Code scanning alerts list for this repo
+    └── alert-details.png                # Details for a single git-secrets alert
+```
+
+---
+
+## The vulnerable demo app
+
+The file `vulnerable-app/app.py` is a tiny Python script that intentionally
+contains hard-coded **fake secrets** so that `git-secrets` has something to
+find.
+
+```python
+# Fake secrets for demo ONLY
+AWS_ACCESS_KEY_ID = "AKIAFAKEFAKEFAKEFAKE"
+AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYFAKE"
+DB_PASSWORD = "SuperSecret123!"
+API_TOKEN = "FAKE-API-TOKEN-123456"
+PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMIIFAKEKEY\n-----END PRIVATE KEY-----"
+YUH = 'ya29.FAKE.YUH.TOKEN'
+HUH = '1//FAKE.HUH.TOKEN'
+
+
+def main():
+    print("This is a demo app with FAKE secrets for git-secrets + SARIF project.")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+These variables are chosen to match the patterns configured in the workflow
+(`DB_PASSWORD`, `API_TOKEN`, `PRIVATE_KEY`, and the built-in AWS patterns).
+
+Again, **none** of these values are real credentials.
+
+---
+
+## Workflow: git-secrets SARIF scan
+
+The workflow file is `.github/workflows/git-secrets-sarif-scan.yml`.
+
+It runs on:
+
+- pushes to `main`
+- pull requests targeting `main`
+
+### High-level steps
+
+1. **Checkout the repository**
+
+   ```yaml
+   - name: Checkout repository
+     uses: actions/checkout@v4
+   ```
+
+2. **Install and configure `git-secrets`**
+
+   ```yaml
+   - name: Install git-secrets
+     run: |
+       git clone https://github.com/awslabs/git-secrets.git
+       cd git-secrets
+       sudo make install
+
+   - name: Configure git-secrets patterns
+     run: |
+       git secrets --register-aws
+       git secrets --add 'DB_PASSWORD'
+       git secrets --add 'API_TOKEN'
+       git secrets --add 'PRIVATE_KEY'
+       git secrets --list || true
+   ```
+
+3. **Run the scan and save output**
+
+   ```yaml
+   - name: Run git-secrets scan and save output
+     run: |
+       git secrets --list || true
+       git secrets --scan > git-secrets-output.txt 2>&1 || true
+       echo "===== git-secrets-output.txt ====="
+       cat git-secrets-output.txt || echo "No output file created"
+   ```
+
+   This step scans the repository and writes any matches (plus git-secrets’
+   messages) to `git-secrets-output.txt`.
+
+4. **Convert the output to SARIF using the custom action**
+
+   ```yaml
+   - name: Convert git-secrets output to SARIF
+     uses: Jorshyy/git-secrets-sarif-action@v1
+     with:
+       input-file: git-secrets-output.txt
+       output-file: git-secrets-output.sarif
+   ```
+
+5. **Upload SARIF to GitHub Code Scanning**
+
+   ```yaml
+   - name: Upload SARIF to GitHub Code Scanning
+     uses: github/codeql-action/upload-sarif@v3
+     with:
+       sarif_file: git-secrets-output.sarif
+   ```
+
+The workflow sets:
+
+```yaml
+permissions:
+  contents: read
+  security-events: write
+```
+
+which is required so `upload-sarif` can publish results as Code scanning
+alerts.
+
+---
+
+## Expected results
+
+When a pull request modifies `vulnerable-app/app.py`:
+
+- The **`git-secrets SARIF scan / scan`** workflow check should be **successful**
+  (the job ran and uploaded SARIF).
+- The **`Code scanning results / git-secrets`** check may show a **failure**
+  because a Critical “Potential secret detected by git-secrets” alert is found.
+- On the PR you will see inline annotations pointing at the lines in
+  `vulnerable-app/app.py` that contain fake secrets.
+- In the repository:
+  - Go to **Security → Code scanning alerts**.
+  - Select the branch where the workflow ran.
+  - You will see alerts produced from the SARIF generated by the custom action.
+
+The `screenshots/` folder contains example screenshots of:
+
+- A successful workflow run.
+- The Code scanning alerts list.
+- The alert details page for one of the fake secrets.
+
+These files are included to document the end-to-end behavior for the project
+report and grading.
+
+---
+
+## Running the demo app locally (optional)
+
+You can run the script locally just to confirm it behaves like a normal Python
+program:
+
+```bash
+cd vulnerable-app
+python3 app.py
+```
+
+You should see:
+
+```text
+This is a demo app with FAKE secrets for git-secrets + SARIF project.
+```
+
+The runtime behavior is harmless; the “vulnerabilities” are the hard-coded
+secrets that are intentionally present to trigger `git-secrets` and produce
+Code scanning alerts.

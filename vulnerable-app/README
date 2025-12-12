@@ -1,0 +1,107 @@
+# Vulnerable Demo App (Fake Secrets Only)
+
+This folder contains a tiny Python script, `app.py`, that intentionally includes
+hard-coded **fake secrets**. Its only purpose is to give `git-secrets`
+something to find so we can exercise our SARIF converter and GitHub Code
+Scanning integration.
+
+```python
+# Fake secrets for demo ONLY
+AWS_ACCESS_KEY_ID = "AKIAFAKEFAKEFAKEFAKE"
+AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYFAKE"
+DB_PASSWORD = "SuperSecret123!"
+API_TOKEN = "FAKE-API-TOKEN-123456"
+PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMIIFAKEKEY\n-----END PRIVATE KEY-----"
+YUH = 'ya29.FAKE.YUH.TOKEN'
+HUH = '1//FAKE.HUH.TOKEN'
+
+
+def main():
+    print("This is a demo app with FAKE secrets for git-secrets + SARIF project.")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+> **All of these values are fake** and should never be used as real credentials.
+> They exist solely to simulate common secret-leak patterns.
+
+---
+
+## What each fake secret represents
+
+The variables are chosen to match the patterns configured in the workflow’s
+`git secrets --add` commands and the built-in AWS rules:
+
+- **`AWS_ACCESS_KEY_ID`**  
+  Example of an AWS access key ID (`AKIA…`). Detected by the AWS provider
+  rules registered via `git secrets --register-aws`.
+
+- **`AWS_SECRET_ACCESS_KEY`**  
+  Example of an AWS secret access key. Also detected by the AWS provider rules.
+
+- **`DB_PASSWORD`**  
+  Simulates a database password hard-coded directly into application source
+  code. Detected because we add a custom pattern for `DB_PASSWORD`.
+
+- **`API_TOKEN`**  
+  Represents an API token or bearer token exposed in code. Detected by the
+  custom `API_TOKEN` pattern.
+
+- **`PRIVATE_KEY`**  
+  Looks like part of a PEM-encoded private key block. Detected by the custom
+  `PRIVATE_KEY` pattern. In a real system, this should never be committed to a
+  repository.
+
+- **`YUH`** and **`HUH`**  
+  These look like OAuth access / refresh tokens (similar to Google-style token
+  formats). They are extra examples of credential-like strings for future
+  pattern experiments, but the current workflow does not add a specific pattern
+  for them.
+
+---
+
+## How this file is used in the project
+
+When the `git-secrets SARIF scan` workflow runs:
+
+1. `git secrets` scans the repository and identifies the fake secrets in this
+   file.
+2. The scan output is written to `git-secrets-output.txt`.
+3. Our custom GitHub Action
+   [`git-secrets-sarif-action`](https://github.com/Jorshyy/git-secrets-sarif-action)
+   converts that text output into a SARIF 2.1.0 file.
+4. The SARIF file is uploaded to GitHub Code Scanning, which produces alerts
+   pointing back to specific lines in `vulnerable-app/app.py`.
+
+This folder therefore acts as the “vulnerable app” portion of the assignment:
+small, easy to understand, but containing enough issues for the secret scanner
+to report.
+
+---
+
+## Running the script (optional)
+
+You can run the script locally just to confirm it behaves like a normal Python
+program:
+
+```bash
+python3 app.py
+```
+
+Output:
+
+```text
+This is a demo app with FAKE secrets for git-secrets + SARIF project.
+```
+
+The runtime behavior is harmless; the “vulnerabilities” are all about the
+presence of hard-coded secrets in the source code.
+
+# EXAMPLE SCREENSHOTS
+![Alt Text](../screenshots/Alert%20Details.png)
+![Alt Text](../screenshots/Alert.png)
+![Alt Text](../screenshots/Workflow%20Execution.png)
+
+
