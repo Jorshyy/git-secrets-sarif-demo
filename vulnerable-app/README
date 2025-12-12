@@ -98,3 +98,10 @@ This is a demo app with FAKE secrets for git-secrets + SARIF project.
 
 The runtime behavior is harmless; the “vulnerabilities” are all about the
 presence of hard-coded secrets in the source code.
+
+# EXAMPLE SCREENSHOTS
+![Alt Text](../screenshots/Alert%20Details.png)
+![Alt Text](../screenshots/Alert.png)
+![Alt Text](../screenshots/Workflow%20Execution.png)
+
+
